@@ -66,11 +66,3 @@ if __name__ == '__main__':
         print("Sorry. Not found.\n")
     result = extract_info(data,age)
     print_result(result)
-    # [print(row) for row in result[0]]
-
-
-
-
-
-
-# print(r.text)
