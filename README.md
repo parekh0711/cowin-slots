@@ -9,8 +9,8 @@ This script should sound an alarm when slots become available.
 1. `pip install -r requirements.txt`
 2. `python cowin_slots.py --pin_code 445102 --age 23`
 
-Multiple pin codes are supported.<br>
-`python cowin_slots.py -p 445102 -p 411005 -a 23`
+Multiple pin codes like below are supported.<br>
+`python cowin_slots.py -p 445102 -p 411005 -a 23`<br>
 Long or short versions of arguments don't matter.
 
 Use `-h` for all optional arguments. If you don't pass pin code or age, it'll be asked in an input prompt.
