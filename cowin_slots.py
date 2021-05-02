@@ -1,5 +1,6 @@
 import requests
 import argparse
+from multiprocessing import Process
 from datetime import date
 from time import sleep
 from playsound import playsound
@@ -7,8 +8,8 @@ from playsound import playsound
 
 def initialize_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--pin_code", type=str,
-                        help="PIN_CODE to look in")
+    parser.add_argument("-p", "--pin_code", type=str, action='append',
+                        help="PIN_CODE(s) to look in. Can be passed multiple times")
     parser.add_argument("-a", "--age", type=int, help="AGE to look for")
     parser.add_argument("-r", "--retry_in", type=int,
                         default=10, help="Retry lookup in RETRY_IN seconds")
@@ -71,19 +72,9 @@ def extract_info(data, age):
     return result
 
 
-def main():
+def search_slots(pin, static_data):
+    cowin_date, age, retry_in, print_in = static_data
     URL = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin"
-    args = initialize_parser().parse_args()
-    pin = args.pin_code
-    if not pin:
-        pin = input("Please enter pincode: ")
-    age = args.age
-    if not age:
-        age = int(input("Please enter your age: "))
-    retry_in = args.retry_in
-    print_in = args.print_in
-    today = date.today()
-    cowin_date = "{}-{}-{}".format(today.day, today.month, today.year)
     PARAMS = {'pincode': pin, 'date': cowin_date}
     idx = 0
     while (1):
@@ -95,21 +86,45 @@ def main():
                 print("Wrong input parameters. Please check. \n")
                 exit(0)
             if not data:
-                print("Sorry. Not found.\n")
+                print("Data not found for {}.\n".format(pin))
             result = extract_info(data, age)
             if result:
-                print('Register now!')
+                print('Register now at {}!'.format(pin))
                 print_result(result)
                 while(1):
                     playsound('alarm.wav')
             else:
                 if time_elapsed % print_in == 0:
-                    print('Can not register yet. Time elapsed {} mins'.format(
-                        time_elapsed / 60))
+                    print('For {}, can not register yet. Time elapsed {} mins'.format(
+                        pin, time_elapsed / 60))
         except requests.exceptions.ConnectionError:
             print("Connection error. Will silently retry in {} seconds".format(retry_in))
         sleep(retry_in)
         idx += 1
+
+
+def main():
+    args = initialize_parser().parse_args()
+    pins = args.pin_code
+    if not pins:
+        pins = [input("Please enter pincode: ")]
+    age = args.age
+    if not age:
+        age = int(input("Please enter your age: "))
+    retry_in = args.retry_in
+    print_in = args.print_in
+    today = date.today()
+    cowin_date = "{}-{}-{}".format(today.day, today.month, today.year)
+    static_data = (cowin_date, age, retry_in, print_in)
+    print("Looking for pin codes: {}".format(pins))
+    # search_slots(pins, static_data)
+    procs = []
+    for pin in pins:
+        p = Process(target=search_slots, args=(pin, static_data))
+        p.start()
+        procs.append(p)
+    for p in procs:
+        p.join()
 
 
 if __name__ == '__main__':
