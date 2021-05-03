@@ -1,10 +1,12 @@
 import requests
 import argparse
+import multiprocessing
 from multiprocessing import Process
 from datetime import date
 from time import sleep
 from playsound import playsound
-
+import sys
+import os
 
 def initialize_parser():
     parser = argparse.ArgumentParser()
@@ -20,7 +22,7 @@ def initialize_parser():
 
 
 def print_result(result):
-    print("\n\n")
+    print("\n")
     if result == []:
         print("Sorry, no centers for your parameters.\n")
         return
@@ -73,7 +75,7 @@ def extract_info(data, age):
 
 
 def search_slots(pin, static_data):
-    cowin_date, age, retry_in, print_in = static_data
+    cowin_date, age, retry_in, print_in, work_dir = static_data
     URL = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin"
     PARAMS = {'pincode': pin, 'date': cowin_date}
     idx = 0
@@ -84,6 +86,7 @@ def search_slots(pin, static_data):
             data = r.json()
             if r.status_code == 400:
                 print("Wrong input parameters. Please check. \n")
+                sleep(retry_in)
                 exit(0)
             if not data:
                 print("Data not found for {}.\n".format(pin))
@@ -92,7 +95,7 @@ def search_slots(pin, static_data):
                 print('Register now at {}!'.format(pin))
                 print_result(result)
                 while(1):
-                    playsound('alarm.wav')
+                    playsound(os.path.join(work_dir, 'alarm.wav'))
             else:
                 if time_elapsed % print_in == 0:
                     print('For {}, can not register yet. Time elapsed {} mins'.format(
@@ -104,10 +107,13 @@ def search_slots(pin, static_data):
 
 
 def main():
+    print("\nThis software is distributed AS IS, under developer non-liability constraints, and in good faith.")
+    print("Please visit https://github.com/yashjakhotiya/cowin-slots/blob/main/LICENSE for the complete license.")
+    print("\nWant to add something? Visit https://github.com/yashjakhotiya/cowin-slots/\n")
     args = initialize_parser().parse_args()
     pins = args.pin_code
     if not pins:
-        pins = [input("Please enter pincode: ")]
+        pins = input("Please enter space-separated pincode(s): ").split()
     age = args.age
     if not age:
         age = int(input("Please enter your age: "))
@@ -115,7 +121,11 @@ def main():
     print_in = args.print_in
     today = date.today()
     cowin_date = "{}-{}-{}".format(today.day, today.month, today.year)
-    static_data = (cowin_date, age, retry_in, print_in)
+    try:
+        work_dir = sys._MEIPASS
+    except AttributeError:
+        work_dir = '.'
+    static_data = (cowin_date, age, retry_in, print_in, work_dir)
     print("Looking for pin codes: {}".format(pins))
     # search_slots(pins, static_data)
     procs = []
@@ -128,4 +138,5 @@ def main():
 
 
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     main()
