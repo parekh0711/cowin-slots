@@ -1,3 +1,7 @@
+# Update!
+
+To download a built executable for Windows, for a simple double-click run, head over to yashjakhotiya.github.io
+
 # Cowin Slots
 
 _Are vaccination slots available for my age group in my pin code?_ 
