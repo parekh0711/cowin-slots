@@ -1,6 +1,6 @@
 # Update!
 
-To download a built executable for Windows, for a simple double-click run, head over to yashjakhotiya.github.io
+To download a built executable for Windows, for a simple double-click run, head over to [yashjakhotiya.github.io](yashjakhotiya.github.io)
 
 # Cowin Slots
 
