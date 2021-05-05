@@ -8,11 +8,17 @@ from playsound import playsound
 import sys
 import os
 
+VACCINE_TYPES = ['covishield', 'covaxin']
+
 def initialize_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--pin_code", type=str, action='append',
                         help="PIN_CODE(s) to look in. Can be passed multiple times")
     parser.add_argument("-a", "--age", type=int, help="AGE to look for")
+    parser.add_argument("-t", "--type", type=str, default=None,
+                        help="Vaccine type ({})".format(', '.join(VACCINE_TYPES)))
+    parser.add_argument("-f", "--free", action="store_true",
+                        help="Look for only free vaccination centers")
     parser.add_argument("-r", "--retry_in", type=int,
                         default=10, help="Retry lookup in RETRY_IN seconds")
     parser.add_argument("-pi", "--print_in", type=int,
@@ -39,7 +45,7 @@ def print_result(result):
         print("\n")
 
 
-def extract_info(data, age):
+def extract_info(data, age, vaccine_type, only_free):
     result = []
     centers = data['centers']
     for center in centers:
@@ -50,16 +56,23 @@ def extract_info(data, age):
         centre_fee = center['fee_type']
         sessions = center['sessions']
         temp_result = []
+
+        if only_free and centre_fee == 'Paid':
+            continue
+
         for session in sessions:
             available_capacity = int(session['available_capacity'])
             if available_capacity == 0:
                 continue
 
             session_age = int(session['min_age_limit'])
-            if session_age > age:
+            session_vaccine = session['vaccine']
+            if (
+                session_age > age or
+                (vaccine_type is not None and vaccine_type != session_vaccine.lower())
+            ):
                 continue
             session_date = session['date']
-            session_vaccine = session['vaccine']
             if session_vaccine == '':
                 session_vaccine = 'unknown'
             row = (available_capacity, session_age,
@@ -75,7 +88,7 @@ def extract_info(data, age):
 
 
 def search_slots(pin, static_data):
-    cowin_date, age, retry_in, print_in, work_dir = static_data
+    cowin_date, age, vaccine_type, only_free, retry_in, print_in, work_dir = static_data
     URL = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin"
     PARAMS = {'pincode': pin, 'date': cowin_date}
     idx = 0
@@ -90,7 +103,7 @@ def search_slots(pin, static_data):
                 exit(0)
             if not data:
                 print("Data not found for {}.\n".format(pin))
-            result = extract_info(data, age)
+            result = extract_info(data, age, vaccine_type, only_free)
             if result:
                 print('Register now at {}!'.format(pin))
                 print_result(result)
@@ -117,6 +130,12 @@ def main():
     age = args.age
     if not age:
         age = int(input("Please enter your age: "))
+    vaccine_type = args.type.lower()
+    while vaccine_type not in VACCINE_TYPES:
+        vaccine_type = input("Please enter a valid vaccine type {}: ".format(
+            ', '.join(VACCINE_TYPES)
+        )).lower()
+    only_free = args.free
     retry_in = args.retry_in
     print_in = args.print_in
     today = date.today()
@@ -125,7 +144,8 @@ def main():
         work_dir = sys._MEIPASS
     except AttributeError:
         work_dir = '.'
-    static_data = (cowin_date, age, retry_in, print_in, work_dir)
+    static_data = (cowin_date, age, vaccine_type, only_free, retry_in,
+                   print_in, work_dir)
     print("Looking for pin codes: {}".format(pins))
     # search_slots(pins, static_data)
     procs = []
