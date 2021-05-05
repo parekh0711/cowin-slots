@@ -7,8 +7,10 @@ from time import sleep
 from playsound import playsound
 import sys
 import os
+import json
 
-VACCINE_TYPES = ['covishield', 'covaxin']
+VACCINE_TYPES = ['covishield', 'covaxin', 'both']
+
 
 def initialize_parser():
     parser = argparse.ArgumentParser()
@@ -18,7 +20,7 @@ def initialize_parser():
     parser.add_argument("-t", "--type", type=str, default=None,
                         help="Vaccine type ({})".format(', '.join(VACCINE_TYPES)))
     parser.add_argument("-f", "--free", action="store_true",
-                        help="Look for only free vaccination centers")
+                        help="Look only for free vaccination centers")
     parser.add_argument("-r", "--retry_in", type=int,
                         default=10, help="Retry lookup in RETRY_IN seconds")
     parser.add_argument("-pi", "--print_in", type=int,
@@ -69,7 +71,7 @@ def extract_info(data, age, vaccine_type, only_free):
             session_vaccine = session['vaccine']
             if (
                 session_age > age or
-                (vaccine_type is not None and vaccine_type != session_vaccine.lower())
+                (vaccine_type != 'both' and vaccine_type != session_vaccine.lower())
             ):
                 continue
             session_date = session['date']
@@ -115,6 +117,8 @@ def search_slots(pin, static_data):
                         pin, time_elapsed / 60))
         except requests.exceptions.ConnectionError:
             print("Connection error. Will silently retry in {} seconds".format(retry_in))
+        except json.decoder.JSONDecodeError:
+            print("Bad data from CoWIN server. Will silently retry in {} seconds".format(retry_in))
         sleep(retry_in)
         idx += 1
 
@@ -130,9 +134,11 @@ def main():
     age = args.age
     if not age:
         age = int(input("Please enter your age: "))
-    vaccine_type = args.type.lower()
+    vaccine_type = args.type
+    if vaccine_type:
+        vaccine_type = args.type.lower()
     while vaccine_type not in VACCINE_TYPES:
-        vaccine_type = input("Please enter a valid vaccine type {}: ".format(
+        vaccine_type = input("Please enter a vaccine type from {}: ".format(
             ', '.join(VACCINE_TYPES)
         )).lower()
     only_free = args.free
