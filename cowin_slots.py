@@ -98,6 +98,10 @@ def search_slots(pin, static_data):
         time_elapsed = idx * retry_in
         try:
             r = requests.get(url=URL, params=PARAMS)
+            if "blocked" in r.text:
+                print("API is currently down. Will try again in a minute.")
+                sleep(60)
+                continue
             data = r.json()
             if r.status_code == 400:
                 print("Wrong input parameters. Please check. \n")
@@ -124,9 +128,6 @@ def search_slots(pin, static_data):
 
 
 def main():
-    print("\nThis software is distributed AS IS, under developer non-liability constraints, and in good faith.")
-    print("Please visit https://github.com/yashjakhotiya/cowin-slots/blob/main/LICENSE for the complete license.")
-    print("\nWant to add something? Visit https://github.com/yashjakhotiya/cowin-slots/\n")
     args = initialize_parser().parse_args()
     pins = args.pin_code
     if not pins:
